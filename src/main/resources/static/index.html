@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DevFlow AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">⚡</span>
+    <span>DevFlow <strong>AI</strong></span>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="generate" class="tab active">Generate</button>
+    <button role="tab" data-view="kits" class="tab">Kits</button>
+    <button role="tab" data-view="history" class="tab">History</button>
+  </nav>
+  <span id="health" class="health" title="Server and database status">checking…</span>
+</header>
+
+<main>
+  <!-- GENERATE ------------------------------------------------------------------------------>
+  <section id="view-generate" class="view active">
+    <div class="layout">
+      <aside class="panel">
+        <h2>1. Pick a task kit</h2>
+        <ul id="kit-picker" class="kit-list"></ul>
+      </aside>
+
+      <section class="panel" id="generate-panel">
+        <div id="generate-empty" class="empty">Choose a kit on the left to start.</div>
+        <div id="generate-body" hidden>
+          <h2>2. Fill in the details</h2>
+          <p id="gen-kit-desc" class="muted"></p>
+          <form id="var-form" class="var-form" autocomplete="off"></form>
+          <div class="actions">
+            <button id="btn-download" class="primary" type="button">Download ZIP</button>
+            <span id="gen-status" class="muted"></span>
+          </div>
+          <div id="gen-errors" class="errors" hidden></div>
+
+          <h2>3. Preview <span id="preview-count" class="muted"></span></h2>
+          <div class="preview">
+            <ul id="preview-files" class="file-list"></ul>
+            <div class="viewer">
+              <div class="viewer-head">
+                <code id="viewer-path"></code>
+                <button id="btn-copy" type="button" class="small">Copy</button>
+              </div>
+              <pre id="viewer-content"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- KITS ---------------------------------------------------------------------------------->
+  <section id="view-kits" class="view">
+    <div class="toolbar">
+      <h2>Task kits</h2>
+      <div>
+        <button id="btn-new-kit" class="primary" type="button">New kit</button>
+        <label class="button-like">Import JSON<input id="import-file" type="file" accept=".json,application/json" hidden></label>
+      </div>
+    </div>
+    <div id="kits-table"></div>
+
+    <div id="kit-editor" class="panel editor" hidden>
+      <h2 id="editor-title">New kit</h2>
+      <div class="grid2">
+        <label>Name<input id="ed-name" required maxlength="120"></label>
+        <label>Category<input id="ed-category" maxlength="60" placeholder="Backend, Workflow, Setup…"></label>
+      </div>
+      <label>Description<textarea id="ed-description" rows="2" maxlength="2000"></textarea></label>
+      <label class="narrow">Minutes saved per use<input id="ed-minutes" type="number" min="0" max="1000" value="15"></label>
+
+      <details class="help">
+        <summary>Template syntax</summary>
+        <p>Write <code>{{name}}</code> wherever a value should go. Every distinct name becomes a form field.
+          Add filters to change the naming style. They apply left to right:</p>
+        <table class="syntax">
+          <tr><td><code>{{entity}}</code></td><td>as typed: <em>order item</em></td></tr>
+          <tr><td><code>{{entity|pascal}}</code></td><td>OrderItem</td></tr>
+          <tr><td><code>{{entity|camel}}</code></td><td>orderItem</td></tr>
+          <tr><td><code>{{entity|kebab}}</code></td><td>order-item</td></tr>
+          <tr><td><code>{{entity|snake}}</code></td><td>order_item</td></tr>
+          <tr><td><code>{{entity|constant}}</code></td><td>ORDER_ITEM</td></tr>
+          <tr><td><code>{{entity|title}}</code></td><td>Order Item</td></tr>
+          <tr><td><code>{{entity|plural|snake}}</code></td><td>order_items</td></tr>
+          <tr><td><code>{{pkg|path}}</code></td><td>com.acme → com/acme</td></tr>
+          <tr><td><code>{{today}}</code>, <code>{{year}}</code></td><td>built in, no field needed</td></tr>
+        </table>
+        <p>Paths can use placeholders too, e.g. <code>src/{{entity|kebab}}/index.ts</code>.</p>
+      </details>
+
+      <h3>Files</h3>
+      <div id="ed-files"></div>
+      <button id="btn-add-file" type="button">+ Add file</button>
+
+      <div id="ed-errors" class="errors" hidden></div>
+      <div class="actions">
+        <button id="btn-save-kit" class="primary" type="button">Save kit</button>
+        <button id="btn-cancel-kit" type="button">Cancel</button>
+        <span id="ed-vars" class="muted"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY ------------------------------------------------------------------------------->
+  <section id="view-history" class="view">
+    <div class="stats" id="stats"></div>
+    <div class="panel">
+      <h2>Recent generations</h2>
+      <div id="runs-table"></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

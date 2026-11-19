@@ -1,0 +1,240 @@
+slug: spring-rest-feature
+name: Spring Boot REST feature
+category: Backend
+minutesSaved: 60
+description: >-
+  Everything a new CRUD feature needs in a Spring Boot + PostgreSQL service: JPA entity,
+  repository, service, REST controller, request DTO, Flyway migration, a unit test and a
+  feature checklist. Type the entity name once; every file gets the right naming style.
+files:
+  - path: src/main/java/{{basePackage|path}}/{{entity|camel|lower}}/{{entity|pascal}}.java
+    content: |
+      package {{basePackage}}.{{entity|camel|lower}};
+
+      import jakarta.persistence.Column;
+      import jakarta.persistence.Entity;
+      import jakarta.persistence.GeneratedValue;
+      import jakarta.persistence.GenerationType;
+      import jakarta.persistence.Id;
+      import jakarta.persistence.PrePersist;
+      import jakarta.persistence.Table;
+
+      import java.time.Instant;
+
+      @Entity
+      @Table(name = "{{entity|plural|snake}}")
+      public class {{entity|pascal}} {
+
+          @Id
+          @GeneratedValue(strategy = GenerationType.IDENTITY)
+          private Long id;
+
+          @Column(nullable = false)
+          private String name;
+
+          @Column(name = "created_at", nullable = false)
+          private Instant createdAt;
+
+          protected {{entity|pascal}}() {
+          }
+
+          public {{entity|pascal}}(String name) {
+              this.name = name;
+          }
+
+          @PrePersist
+          void onCreate() {
+              createdAt = Instant.now();
+          }
+
+          public Long getId() { return id; }
+          public String getName() { return name; }
+          public void setName(String name) { this.name = name; }
+          public Instant getCreatedAt() { return createdAt; }
+      }
+  - path: src/main/java/{{basePackage|path}}/{{entity|camel|lower}}/{{entity|pascal}}Repository.java
+    content: |
+      package {{basePackage}}.{{entity|camel|lower}};
+
+      import org.springframework.data.jpa.repository.JpaRepository;
+
+      public interface {{entity|pascal}}Repository extends JpaRepository<{{entity|pascal}}, Long> {
+      }
+  - path: src/main/java/{{basePackage|path}}/{{entity|camel|lower}}/{{entity|pascal}}Request.java
+    content: |
+      package {{basePackage}}.{{entity|camel|lower}};
+
+      import jakarta.validation.constraints.NotBlank;
+      import jakarta.validation.constraints.Size;
+
+      /** JSON body for creating or updating a {{entity|title}}. */
+      public record {{entity|pascal}}Request(@NotBlank @Size(max = 200) String name) {
+      }
+  - path: src/main/java/{{basePackage|path}}/{{entity|camel|lower}}/{{entity|pascal}}Service.java
+    content: |
+      package {{basePackage}}.{{entity|camel|lower}};
+
+      import org.springframework.http.HttpStatus;
+      import org.springframework.stereotype.Service;
+      import org.springframework.transaction.annotation.Transactional;
+      import org.springframework.web.server.ResponseStatusException;
+
+      import java.util.List;
+
+      @Service
+      public class {{entity|pascal}}Service {
+
+          private final {{entity|pascal}}Repository repository;
+
+          public {{entity|pascal}}Service({{entity|pascal}}Repository repository) {
+              this.repository = repository;
+          }
+
+          @Transactional(readOnly = true)
+          public List<{{entity|pascal}}> findAll() {
+              return repository.findAll();
+          }
+
+          @Transactional(readOnly = true)
+          public {{entity|pascal}} findById(long id) {
+              return repository.findById(id)
+                      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "{{entity|title}} " + id + " not found"));
+          }
+
+          @Transactional
+          public {{entity|pascal}} create({{entity|pascal}}Request request) {
+              return repository.save(new {{entity|pascal}}(request.name()));
+          }
+
+          @Transactional
+          public {{entity|pascal}} update(long id, {{entity|pascal}}Request request) {
+              {{entity|pascal}} {{entity|camel}} = findById(id);
+              {{entity|camel}}.setName(request.name());
+              return {{entity|camel}};
+          }
+
+          @Transactional
+          public void delete(long id) {
+              repository.delete(findById(id));
+          }
+      }
+  - path: src/main/java/{{basePackage|path}}/{{entity|camel|lower}}/{{entity|pascal}}Controller.java
+    content: |
+      package {{basePackage}}.{{entity|camel|lower}};
+
+      import jakarta.validation.Valid;
+      import org.springframework.http.HttpStatus;
+      import org.springframework.web.bind.annotation.*;
+
+      import java.util.List;
+
+      @RestController
+      @RequestMapping("/api/{{entity|plural|kebab}}")
+      public class {{entity|pascal}}Controller {
+
+          private final {{entity|pascal}}Service service;
+
+          public {{entity|pascal}}Controller({{entity|pascal}}Service service) {
+              this.service = service;
+          }
+
+          @GetMapping
+          public List<{{entity|pascal}}> list() {
+              return service.findAll();
+          }
+
+          @GetMapping("/{id}")
+          public {{entity|pascal}} get(@PathVariable long id) {
+              return service.findById(id);
+          }
+
+          @PostMapping
+          @ResponseStatus(HttpStatus.CREATED)
+          public {{entity|pascal}} create(@Valid @RequestBody {{entity|pascal}}Request request) {
+              return service.create(request);
+          }
+
+          @PutMapping("/{id}")
+          public {{entity|pascal}} update(@PathVariable long id, @Valid @RequestBody {{entity|pascal}}Request request) {
+              return service.update(id, request);
+          }
+
+          @DeleteMapping("/{id}")
+          @ResponseStatus(HttpStatus.NO_CONTENT)
+          public void delete(@PathVariable long id) {
+              service.delete(id);
+          }
+      }
+  - path: src/test/java/{{basePackage|path}}/{{entity|camel|lower}}/{{entity|pascal}}ServiceTest.java
+    content: |
+      package {{basePackage}}.{{entity|camel|lower}};
+
+      import org.junit.jupiter.api.Test;
+      import org.springframework.web.server.ResponseStatusException;
+
+      import java.util.Optional;
+
+      import static org.assertj.core.api.Assertions.assertThat;
+      import static org.assertj.core.api.Assertions.assertThatThrownBy;
+      import static org.mockito.ArgumentMatchers.any;
+      import static org.mockito.Mockito.mock;
+      import static org.mockito.Mockito.when;
+
+      class {{entity|pascal}}ServiceTest {
+
+          private final {{entity|pascal}}Repository repository = mock({{entity|pascal}}Repository.class);
+          private final {{entity|pascal}}Service service = new {{entity|pascal}}Service(repository);
+
+          @Test
+          void createSavesTheName() {
+              when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+              {{entity|pascal}} created = service.create(new {{entity|pascal}}Request("First {{entity|lower}}"));
+
+              assertThat(created.getName()).isEqualTo("First {{entity|lower}}");
+          }
+
+          @Test
+          void findByIdThrowsNotFoundForUnknownId() {
+              when(repository.findById(42L)).thenReturn(Optional.empty());
+
+              assertThatThrownBy(() -> service.findById(42L)).isInstanceOf(ResponseStatusException.class);
+          }
+      }
+  - path: src/main/resources/db/migration/V{{migrationVersion}}__create_{{entity|plural|snake}}.sql
+    content: |
+      CREATE TABLE {{entity|plural|snake}} (
+          id         BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+          name       VARCHAR(200) NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE NOT NULL
+      );
+  - path: docs/features/{{entity|kebab}}.md
+    content: |
+      # Feature: {{entity|title}}
+
+      Generated by DevFlow AI on {{today}}.
+
+      ## Endpoints
+
+      | Method | Path | Purpose |
+      |--------|------|---------|
+      | GET    | /api/{{entity|plural|kebab}}      | List all |
+      | GET    | /api/{{entity|plural|kebab}}/{id} | Get one |
+      | POST   | /api/{{entity|plural|kebab}}      | Create |
+      | PUT    | /api/{{entity|plural|kebab}}/{id} | Update |
+      | DELETE | /api/{{entity|plural|kebab}}/{id} | Delete |
+
+      ## Try it
+
+      ```bash
+      curl -X POST localhost:8080/api/{{entity|plural|kebab}} -H 'Content-Type: application/json' -d '{"name":"example"}'
+      curl localhost:8080/api/{{entity|plural|kebab}}
+      ```
+
+      ## Checklist
+
+      - [ ] Add the real fields to `{{entity|pascal}}` and the `V{{migrationVersion}}` migration
+      - [ ] Make sure `V{{migrationVersion}}` is higher than your latest existing migration
+      - [ ] Add validation rules to `{{entity|pascal}}Request`
+      - [ ] Extend `{{entity|pascal}}ServiceTest` for the new rules
+      - [ ] Run `mvn verify`

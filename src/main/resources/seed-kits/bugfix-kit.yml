@@ -1,0 +1,95 @@
+slug: bugfix-kit
+name: Bug fix kit
+category: Workflow
+minutesSaved: 20
+description: >-
+  The paperwork around a bug fix: branch name and git commands, an investigation notes file,
+  a commit message, a pull request description and a changelog entry, all filled in from the
+  ticket ID and a one-line summary.
+files:
+  - path: .devflow/{{ticket|kebab}}/START_HERE.md
+    content: |
+      # {{ticket}}: {{summary}}
+
+      Component: **{{component}}**. Created {{today}}.
+
+      ## 1. Create the branch
+
+      ```bash
+      git switch main && git pull
+      git switch -c fix/{{ticket|kebab}}-{{summary|kebab}}
+      ```
+
+      ## 2. Reproduce and take notes
+
+      Fill in `docs/bugs/{{ticket|kebab}}.md` as you investigate.
+
+      ## 3. Commit with the prepared message
+
+      ```bash
+      git commit -F .devflow/{{ticket|kebab}}/COMMIT_MSG.txt
+      ```
+
+      ## 4. Open the pull request
+
+      Paste `.devflow/{{ticket|kebab}}/PR_DESCRIPTION.md` as the description, and add
+      `CHANGELOG_ENTRY.md` to your changelog.
+  - path: docs/bugs/{{ticket|kebab}}.md
+    content: |
+      # {{ticket}}: {{summary}}
+
+      - **Component:** {{component}}
+      - **Reported:** {{today}}
+      - **Status:** Investigating
+
+      ## Steps to reproduce
+
+      1.
+      2.
+      3.
+
+      ## Expected vs actual
+
+      - Expected:
+      - Actual:
+
+      ## Root cause
+
+      _What was wrong, and why?_
+
+      ## Fix
+
+      _What changed, and why does it fix the root cause?_
+
+      ## Verification
+
+      - [ ] Added a test that fails without the fix
+      - [ ] Test passes with the fix
+      - [ ] Checked related areas in {{component}}
+  - path: .devflow/{{ticket|kebab}}/COMMIT_MSG.txt
+    content: |
+      fix({{component|kebab}}): {{summary}}
+
+      Root cause: TODO
+
+      Refs: {{ticket}}
+  - path: .devflow/{{ticket|kebab}}/PR_DESCRIPTION.md
+    content: |
+      ## Fix {{ticket}}: {{summary}}
+
+      ### What was wrong
+      TODO, see docs/bugs/{{ticket|kebab}}.md
+
+      ### What this PR changes
+      -
+
+      ### How it was tested
+      - [ ] New regression test
+      - [ ] Manual check:
+
+      ### Risk
+      Affects **{{component}}** only.
+  - path: .devflow/{{ticket|kebab}}/CHANGELOG_ENTRY.md
+    content: |
+      ### Fixed
+      - {{component}}: {{summary}} ({{ticket}})

@@ -1,0 +1,109 @@
+slug: project-starter
+name: New project starter files
+category: Setup
+minutesSaved: 45
+description: >-
+  The standard files every new repository needs: README, .gitignore, .editorconfig,
+  .env.example, contributing guide, pull request template and a GitHub Actions CI workflow
+  for a Maven project.
+files:
+  - path: README.md
+    content: |
+      # {{projectName|title}}
+
+      {{description}}
+
+      ## Requirements
+
+      - Java 21
+      - Maven 3.9+
+
+      ## Getting started
+
+      ```bash
+      cp .env.example .env    # then fill in your own values
+      mvn spring-boot:run
+      ```
+
+      ## Running tests
+
+      ```bash
+      mvn verify
+      ```
+
+      ## Contributing
+
+      See [CONTRIBUTING.md](CONTRIBUTING.md).
+  - path: .gitignore
+    content: |
+      target/
+      build/
+      .env
+      *.log
+      .idea/
+      *.iml
+      .vscode/
+      .DS_Store
+  - path: .editorconfig
+    content: |
+      root = true
+
+      [*]
+      charset = utf-8
+      end_of_line = lf
+      insert_final_newline = true
+      indent_style = space
+      indent_size = 4
+      trim_trailing_whitespace = true
+
+      [*.{yml,yaml,json}]
+      indent_size = 2
+
+      [*.md]
+      trim_trailing_whitespace = false
+  - path: .env.example
+    content: |
+      # Copy to .env and fill in real values. Never commit .env.
+      DB_URL=jdbc:postgresql://localhost:5432/{{projectName|snake}}
+      DB_USERNAME={{projectName|snake}}
+      DB_PASSWORD=change-me
+  - path: CONTRIBUTING.md
+    content: |
+      # Contributing to {{projectName|title}}
+
+      1. Create a branch: `git switch -c feat/short-description`
+      2. Keep commits small. Use messages like `feat: ...`, `fix: ...`, `docs: ...`
+      3. Run `mvn verify` before pushing
+      4. Open a pull request and fill in the template
+  - path: .github/pull_request_template.md
+    content: |
+      ## What does this change?
+
+      ## Why?
+
+      ## How was it tested?
+      - [ ] `mvn verify` passes
+      - [ ] Manually checked:
+  - path: .github/workflows/ci.yml
+    content: |
+      name: CI
+
+      on:
+        push:
+          branches: [main]
+        pull_request:
+
+      jobs:
+        build:
+          runs-on: ubuntu-latest
+          steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-java@v4
+              with:
+                distribution: temurin
+                java-version: '21'
+                cache: maven
+            - name: Build and test {{projectName|kebab}}
+              run: mvn -B verify
+            - name: Show commit
+              run: echo "Built ${{ github.sha }}"

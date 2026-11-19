@@ -1,0 +1,37 @@
+# DevFlow AI configuration.
+# Secrets never live in this file. Values come from environment variables,
+# or from a local `.env` file (git-ignored) imported below.
+spring:
+  application:
+    name: devflow-ai
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/devflow}
+    username: ${DB_USERNAME:devflow}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none          # Flyway owns the schema (src/main/resources/db/migration)
+  flyway:
+    enabled: true
+
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}   # local developer tool: only reachable from this machine by default
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+devflow:
+  limits:
+    max-files-per-kit: 50
+    max-file-chars: 200000
+    max-variable-length: 200
