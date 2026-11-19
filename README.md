@@ -233,3 +233,7 @@ The original project files were not available, so the project was rebuilt from t
   Add authentication (for example, Spring Security) before exposing it on a network.
 - **"AI"**: no AI model or API key is used yet. Kits are deterministic templates.
   Possible next steps: AI-suggested kits, or AI filling in placeholders such as summaries.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
