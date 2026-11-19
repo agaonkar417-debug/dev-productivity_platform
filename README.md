@@ -237,3 +237,7 @@ The original project files were not available, so the project was rebuilt from t
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+[MIT](LICENSE) (c) 2026 Anup Gaonkar
