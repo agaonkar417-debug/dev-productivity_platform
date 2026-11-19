@@ -2,7 +2,11 @@
 #
 #   docker compose up -d --build     start everything   (or just run start.bat / ./start.sh)
 #   docker compose down              stop (your data is kept)
-#   docker compose up -d postgres    start only the database (for `./mvnw spring-boot:run`)
+#
+# The database is NOT published on your computer's network: the app reaches it over Docker's
+# private network, so it never conflicts with a PostgreSQL you already have on port 5432.
+# To run the app from source with `./mvnw spring-boot:run`, publish the database on port 5433:
+#   docker compose -f docker-compose.yml -f docker-compose.db-port.yml up -d postgres
 #
 # Credentials come from your `.env` file (start scripts create it; see .env.example).
 services:
@@ -13,8 +17,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-devflow}
       POSTGRES_USER: ${POSTGRES_USER:-devflow}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    ports:
-      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - devflow-pgdata:/var/lib/postgresql/data
     healthcheck:

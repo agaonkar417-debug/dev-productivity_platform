@@ -1,0 +1,9 @@
+# Optional: publish the Docker database on your computer so the app can run from source
+# (`./mvnw spring-boot:run`). Uses port 5433 by default so it does not clash with a
+# PostgreSQL already installed on 5432. Change DB_PORT in .env if 5433 is also taken.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.db-port.yml up -d postgres
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${DB_PORT:-5433}:5432"

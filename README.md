@@ -56,6 +56,10 @@ The script does everything for you:
 5. Waits until the app is healthy, then opens **http://localhost:8080** in your browser.
 
 To stop it, use **`stop.bat`** on Windows or `./stop.sh` on macOS/Linux. Your kits and history are kept.
+
+The database is only reachable inside Docker, so it never conflicts with a PostgreSQL already
+on your computer. If port 8080 is busy, or reserved by Windows, the script picks a free port
+from 8081 to 8099 and saves it as `PORT` in `.env`. The script prints the address to open.
 Run the start script again any time. It skips the steps that are already done.
 
 **First run on Windows: two one-time steps the script cannot do for you**
@@ -88,13 +92,16 @@ Open `.env` and replace both `change-me…` passwords with the **same** long ran
 
 ### 3. Start the database
 
-With Docker, start only the database container (the app runs from your code in the next step):
+With Docker, start only the database container and publish it on port 5433. The app runs from
+your code in the next step. Port 5433 avoids clashing with any PostgreSQL already on 5432;
+change `DB_PORT` in `.env` if 5433 is taken too.
 
 ```bash
-docker compose up -d postgres
+docker compose -f docker-compose.yml -f docker-compose.db-port.yml up -d postgres
 ```
 
-Or, with PostgreSQL installed locally, create the user and database once, using the password from your `.env`:
+Or, with PostgreSQL installed locally, set `DB_URL=jdbc:postgresql://localhost:5432/devflow`
+in `.env`, then create the user and database once, using the password from your `.env`:
 
 ```bash
 psql -U postgres -c "CREATE USER devflow WITH PASSWORD 'your-password-from-.env';"

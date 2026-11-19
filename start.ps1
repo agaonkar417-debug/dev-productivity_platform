@@ -25,6 +25,28 @@ function Docker-Running {
     docker info *> $null
     return ($LASTEXITCODE -eq 0)
 }
+function Port-Free([int]$p) {
+    try {
+        $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $p)
+        $listener.Start()
+        $listener.Stop()
+        return $true
+    } catch {
+        return $false
+    }
+}
+function Set-EnvValue($name, $value) {
+    # Replaces "NAME=..." or a commented "# NAME=..." line in .env, or appends one
+    $path = Join-Path $PSScriptRoot '.env'
+    $out = New-Object System.Collections.Generic.List[string]
+    $found = $false
+    foreach ($line in (Get-Content $path)) {
+        if (-not $found -and $line -match "^#?\s*$name=") { $out.Add("$name=$value"); $found = $true }
+        else { $out.Add($line) }
+    }
+    if (-not $found) { $out.Add("$name=$value") }
+    [System.IO.File]::WriteAllLines($path, $out.ToArray(), (New-Object System.Text.ASCIIEncoding))
+}
 function Winget-Install($id, $label) {
     if (-not (Have 'winget')) {
         Fail "winget is not available. Install 'App Installer' from the Microsoft Store, or install $label manually, then run start.bat again."
@@ -102,6 +124,20 @@ if (-not (Test-Path '.env')) {
 $port = 8080
 $portLine = Select-String -Path '.env' -Pattern '^PORT=(\d+)' | Select-Object -First 1
 if ($portLine) { $port = [int]$portLine.Matches[0].Groups[1].Value }
+
+# A port can be used by another program or reserved by Windows (Hyper-V/WSL reserve ranges).
+# Test by actually opening it; if it fails, pick the next free port and remember it in .env.
+$appRunning = [bool](docker compose ps --status running -q app 2>$null)
+if (-not $appRunning -and -not (Port-Free $port)) {
+    $newPort = $null
+    foreach ($p in 8081..8099) {
+        if (Port-Free $p) { $newPort = $p; break }
+    }
+    if (-not $newPort) { Fail "Ports $port and 8081-8099 are all in use. Set a free PORT=... in .env and run start.bat again." }
+    Say "Port $port is in use or reserved by Windows, so DevFlow AI will use port $newPort."
+    Set-EnvValue 'PORT' $newPort
+    $port = $newPort
+}
 
 # ------------------------------------------------------------------ 4. Build and start
 Say 'Building and starting DevFlow AI (the first build downloads dependencies and takes a few minutes)...'

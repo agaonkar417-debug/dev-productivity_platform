@@ -116,6 +116,27 @@ fi
 PORT_IN_ENV="$(sed -n 's/^PORT=\([0-9]*\).*/\1/p' .env | head -1)"
 PORT="${PORT_IN_ENV:-8080}"
 
+# If another program already uses the port, pick the next free one and remember it in .env
+port_in_use() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+set_env_value() {   # replaces NAME=... or "# NAME=..." in .env, or appends it (works on macOS and Linux)
+  awk -v k="$1" -v v="$2" '
+    !done && $0 ~ ("^#? *" k "=") { print k "=" v; done = 1; next }
+    { print }
+    END { if (!done) print k "=" v }' .env > .env.tmp
+  mv .env.tmp .env
+  chmod 600 .env
+}
+if [[ -z "$($DOCKER compose ps --status running -q app 2>/dev/null)" ]] && port_in_use "$PORT"; then
+  NEW_PORT=""
+  for p in $(seq 8081 8099); do
+    if ! port_in_use "$p"; then NEW_PORT=$p; break; fi
+  done
+  [[ -n "$NEW_PORT" ]] || fail "Ports $PORT and 8081-8099 are all in use. Set a free PORT=... in .env and run again."
+  say "Port $PORT is already in use, so DevFlow AI will use port $NEW_PORT."
+  set_env_value PORT "$NEW_PORT"
+  PORT="$NEW_PORT"
+fi
+
 # ------------------------------------------------------------------ 4. Build and start
 say "Building and starting DevFlow AI (the first build downloads dependencies and takes a few minutes)..."
 $DOCKER compose up -d --build
