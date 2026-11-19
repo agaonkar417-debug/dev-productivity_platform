@@ -111,7 +111,7 @@ const EXAMPLES = {
   ticket: "BUG-142", summary: "Cart total ignores discount codes", component: "checkout",
   projectName: "inventory service", description: "Tracks stock levels across warehouses.",
 };
-const gen = { kits: [], kit: null, files: [], activeFile: 0, timer: null };
+const gen = { kits: [], kit: null, files: [], activeFile: 0, timer: null, selectSeq: 0, previewSeq: 0, loadingId: null };
 
 async function loadGenerate() {
   gen.kits = await api("GET", "/api/kits");
@@ -135,7 +135,20 @@ async function loadGenerate() {
 }
 
 async function selectKit(id) {
-  gen.kit = await api("GET", "/api/kits/" + id);
+  // Already showing (or loading) this kit: do nothing, so typed values are never redrawn away.
+  if ((gen.kit && gen.kit.id === id) || gen.loadingId === id) return;
+  // If the user clicks another kit before this response arrives, drop this one.
+  const token = ++gen.selectSeq;
+  gen.loadingId = id;
+  let kit;
+  try {
+    kit = await api("GET", "/api/kits/" + id);
+  } finally {
+    if (token === gen.selectSeq) gen.loadingId = null;
+  }
+  if (token !== gen.selectSeq) return;
+  const typed = currentValues();
+  gen.kit = kit;
   store.set("lastKit", String(id));
   document.querySelectorAll("#kit-picker .kit-card").forEach((c, i) =>
     c.classList.toggle("selected", gen.kits[i] && gen.kits[i].id === id));
@@ -152,7 +165,8 @@ async function selectKit(id) {
       placeholder: EXAMPLES[name] ? "e.g. " + EXAMPLES[name] : "",
       oninput: () => { store.set("var." + name, input.value); schedulePreview(); },
     });
-    input.value = store.get("var." + name) || "";
+    // Keep what the user already typed in a same-named field, else the last value they used.
+    input.value = typed[name] || store.get("var." + name) || "";
     return el("label", {}, labelFor(name), input);
   }));
   if (!gen.kit.variables.length) form.append(el("p", { class: "muted" }, "This kit has no variables."));
@@ -176,6 +190,7 @@ function schedulePreview() {
 }
 
 async function refreshPreview() {
+  const token = ++gen.previewSeq;   // only the newest preview request may update the screen
   const values = currentValues();
   const missing = gen.kit.variables.filter((v) => !(values[v] || "").trim());
   $("#gen-errors").hidden = true;
@@ -188,11 +203,12 @@ async function refreshPreview() {
   }
   try {
     const result = await api("POST", "/api/kits/" + gen.kit.id + "/preview", { variables: values });
+    if (token !== gen.previewSeq) return;
     gen.files = result.files;
     if (gen.activeFile >= gen.files.length) gen.activeFile = 0;
     renderPreview();
   } catch (err) {
-    showErrors($("#gen-errors"), err);
+    if (token === gen.previewSeq) showErrors($("#gen-errors"), err);
   }
 }
 
@@ -234,7 +250,7 @@ $("#btn-download").addEventListener("click", async () => {
 });
 
 // ---------------------------------------------------------------- KITS
-const editor = { id: null, files: [] };
+const editor = { id: null, files: [], session: 0 };
 
 async function loadKitsView() {
   const kits = await api("GET", "/api/kits");
@@ -296,13 +312,14 @@ $("#import-file").addEventListener("change", async (e) => {
 });
 
 $("#btn-new-kit").addEventListener("click", () => openEditor(null));
-$("#btn-cancel-kit").addEventListener("click", () => { $("#kit-editor").hidden = true; });
+$("#btn-cancel-kit").addEventListener("click", () => { editor.session++; $("#kit-editor").hidden = true; });
 $("#btn-add-file").addEventListener("click", () => {
   editor.files.push({ path: "", content: "" });
   renderEditorFiles();
 });
 
 async function openEditor(id) {
+  editor.session++;
   editor.id = id;
   const kit = id ? await api("GET", "/api/kits/" + id) : {
     name: "", category: "", description: "", minutesSaved: 15,
@@ -356,16 +373,22 @@ $("#btn-save-kit").addEventListener("click", async () => {
     minutesSaved: Number($("#ed-minutes").value) || 0,
     files: editor.files,
   };
+  const btn = $("#btn-save-kit");
+  const session = editor.session;   // the editor may be reopened while this save is running
+  btn.disabled = true;              // prevents double-clicks from creating the kit twice
   try {
     const saved = editor.id
       ? await api("PUT", "/api/kits/" + editor.id, body)
       : await api("POST", "/api/kits", body);
     toast("Saved " + saved.name);
-    $("#kit-editor").hidden = true;
     gen.kit = null;
-    loadKitsView();
+    if (session === editor.session) $("#kit-editor").hidden = true;
+    await loadKitsView();
   } catch (err) {
-    showErrors($("#ed-errors"), err);
+    if (session === editor.session) showErrors($("#ed-errors"), err);
+    else toast("Save failed: " + err.message);
+  } finally {
+    btn.disabled = false;
   }
 });
 

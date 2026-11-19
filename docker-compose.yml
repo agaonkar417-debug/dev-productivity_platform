@@ -1,6 +1,10 @@
-# Local PostgreSQL for DevFlow AI.
-#   docker compose up -d
-# Credentials come from your `.env` file (see .env.example).
+# DevFlow AI: database + app.
+#
+#   docker compose up -d --build     start everything   (or just run start.bat / ./start.sh)
+#   docker compose down              stop (your data is kept)
+#   docker compose up -d postgres    start only the database (for `./mvnw spring-boot:run`)
+#
+# Credentials come from your `.env` file (start scripts create it; see .env.example).
 services:
   postgres:
     image: postgres:16
@@ -10,14 +14,28 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-devflow}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - devflow-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U devflow"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
       timeout: 3s
-      retries: 10
+      retries: 20
+
+  app:
+    build: .
+    image: devflow-ai:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-devflow}
+      DB_USERNAME: ${POSTGRES_USER:-devflow}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${PORT:-8080}:8080"
 
 volumes:
   devflow-pgdata:

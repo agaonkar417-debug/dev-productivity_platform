@@ -36,7 +36,40 @@ a minute.
 | Frontend | Plain HTML, CSS and JS in `src/main/resources/static` | No Node.js or build step; Spring serves it |
 | Tests | JUnit 5, MockMvc, H2 | `mvn test` needs no running database |
 
-## Quick start
+## Quick start: one click
+
+**Windows:** double-click **`start.bat`**.
+
+**macOS or Linux:** open a terminal in this folder and run:
+
+```bash
+./start.sh
+```
+
+The script does everything for you:
+
+1. Installs **Docker Desktop** and **Java 21** if they are missing (with `winget` on Windows,
+   Homebrew on macOS, or `apt`/`dnf` on Linux). Windows may ask for administrator permission: click **Yes**.
+2. Starts Docker.
+3. Creates `.env` with a random database password. It is never shown and never committed.
+4. Builds and starts the database and the app in Docker.
+5. Waits until the app is healthy, then opens **http://localhost:8080** in your browser.
+
+To stop it, use **`stop.bat`** on Windows or `./stop.sh` on macOS/Linux. Your kits and history are kept.
+Run the start script again any time. It skips the steps that are already done.
+
+**First run on Windows: two one-time steps the script cannot do for you**
+
+- If WSL 2 (needed by Docker Desktop) was not installed yet, the script installs it and asks you to
+  **restart your computer**. Then double-click `start.bat` again.
+- The first time Docker Desktop opens, **accept its terms** in the Docker window.
+  If the script stops at "Docker Desktop is not running yet", do that, then run `start.bat` again.
+
+Only Docker is needed to run the app. Java 21 is installed so you can also run the tests and work
+on the code. To skip installing it, use `./start.sh --no-java`, or on Windows run
+`powershell -ExecutionPolicy Bypass -File start.ps1 -NoJava`.
+
+## Manual setup (for development)
 
 ### 1. Install the prerequisites
 
@@ -55,10 +88,10 @@ Open `.env` and replace both `change-me…` passwords with the **same** long ran
 
 ### 3. Start the database
 
-With Docker:
+With Docker, start only the database container (the app runs from your code in the next step):
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 
 Or, with PostgreSQL installed locally, create the user and database once, using the password from your `.env`:
@@ -161,6 +194,11 @@ Kit IDs come from `GET /api/kits`.
 ## Project layout
 
 ```
+start.bat / start.ps1       Windows one-click install + start
+start.sh                    macOS/Linux one-command install + start
+stop.bat / stop.sh          stop the app (data is kept)
+Dockerfile                  builds the app image (Java 21)
+docker-compose.yml          database + app
 src/main/java/com/devflow/
   DevFlowApplication.java   entry point (in the root package so Spring finds every controller)
   kit/        kits: entity, repository, service, REST controller, YAML seeder
